@@ -1,0 +1,6 @@
+{
+  "name": "Minutes of the Meeting Consolidator",
+  "description": "Analyze, classify, and consolidate Minutes of the Meeting (MOM) with AI assistance, keyword triggers, iterative review, and multi-format exports.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
