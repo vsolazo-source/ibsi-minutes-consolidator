@@ -19,6 +19,7 @@ import {
   Check,
 } from "lucide-react";
 import type { ConsolidatedMOM } from "../types";
+import { localReviseMOM } from "../utils/localSynthesis";
 
 interface ReviewStageProps {
   mom: ConsolidatedMOM;
@@ -62,27 +63,35 @@ export const ReviewStage: React.FC<ReviewStageProps> = ({
     setPromptText("");
 
     try {
-      const response = await fetch("/api/mom/revise", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          currentMOM: mom,
-          userPrompt: text,
-        }),
-      });
+      let updated: ConsolidatedMOM;
+      try {
+        const response = await fetch("/api/mom/revise", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            currentMOM: mom,
+            userPrompt: text,
+          }),
+        });
 
-      if (!response.ok) {
-        throw new Error("Failed to revise MOM");
+        if (response.ok) {
+          updated = await response.json();
+        } else {
+          console.warn("Server revision unavailable, applying local revision logic");
+          updated = localReviseMOM(mom, text);
+        }
+      } catch {
+        updated = localReviseMOM(mom, text);
       }
 
-      const updated = await response.json();
       onUpdateMOM(updated);
       if (updated.revisionNotes) {
-        setRevisionHistory((prev) => [updated.revisionNotes, ...prev]);
+        setRevisionHistory((prev) => [updated.revisionNotes as string, ...prev]);
       }
     } catch (err: any) {
-      console.error("Revision error:", err);
-      alert("Failed to revise MOM with AI: " + err.message);
+      console.warn("Revision fallback applied:", err);
+      const fallback = localReviseMOM(mom, text);
+      onUpdateMOM(fallback);
     } finally {
       setIsRevising(false);
       setTimeout(() => textareaRef.current?.focus(), 100);

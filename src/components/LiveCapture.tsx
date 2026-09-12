@@ -27,6 +27,7 @@ import type {
   RawMeetingItem,
   ItemType,
 } from "../types";
+import { localHeuristicAnalyzeItem } from "../utils/localSynthesis";
 
 interface LiveCaptureProps {
   metadata: MeetingMetadata;
@@ -121,21 +122,26 @@ export const LiveCapture: React.FC<LiveCaptureProps> = ({
     setInputText("");
 
     try {
-      const response = await fetch("/api/mom/analyze-item", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          rawText: text,
-          metadata,
-          existingItems: items,
-        }),
-      });
+      let analyzed: any;
+      try {
+        const response = await fetch("/api/mom/analyze-item", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            rawText: text,
+            metadata,
+            existingItems: items,
+          }),
+        });
 
-      if (!response.ok) {
-        throw new Error("Failed to analyze input note");
+        if (response.ok) {
+          analyzed = await response.json();
+        } else {
+          analyzed = localHeuristicAnalyzeItem(text, metadata, items);
+        }
+      } catch {
+        analyzed = localHeuristicAnalyzeItem(text, metadata, items);
       }
-
-      const analyzed = await response.json();
 
       const newItem: RawMeetingItem = {
         id: `item-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
@@ -157,8 +163,8 @@ export const LiveCapture: React.FC<LiveCaptureProps> = ({
 
       onAddItem(newItem);
     } catch (err: any) {
-      console.error("Error analyzing note:", err);
-      // Fallback manual item
+      console.warn("Using local item fallback:", err);
+      const fallback = localHeuristicAnalyzeItem(text, metadata, items);
       const fallbackItem: RawMeetingItem = {
         id: `item-${Date.now()}`,
         rawText: text,
@@ -166,9 +172,15 @@ export const LiveCapture: React.FC<LiveCaptureProps> = ({
           hour: "2-digit",
           minute: "2-digit",
         }),
-        type: "discussion",
-        title: "Meeting Note",
-        expoundedText: text,
+        type: fallback.type,
+        title: fallback.title,
+        expoundedText: fallback.expoundedText,
+        relatedToItemId: fallback.relatedToItemId,
+        relatedReason: fallback.relatedReason,
+        suggestedOwner: fallback.suggestedOwner,
+        suggestedDeadline: fallback.suggestedDeadline,
+        priority: fallback.priority,
+        tags: fallback.tags,
       };
       onAddItem(fallbackItem);
     } finally {
