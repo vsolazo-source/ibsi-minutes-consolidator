@@ -40,10 +40,10 @@ const modelCooldownMap = new Map<string, number>();
 function getHealthyCandidateModels(): string[] {
   const now = Date.now();
   const allModels = [
-    "gemini-3.1-flash-lite",
-    "gemini-3.6-flash",
-    "gemini-flash-latest",
     "gemini-3.8-flash",
+    "gemini-3.1-flash-lite",
+    "gemini-flash-latest",
+    "gemini-3.1-pro-preview",
   ];
 
   return allModels.sort((a, b) => {
@@ -534,5 +534,25 @@ Provide a concise 3 to 5 sentence summary and bulleted key agenda topics to serv
 // Mount the router on both `/api` and `/` so all deployment environments work seamlessly
 app.use("/api", router);
 app.use("/", router);
+
+// Resilient global error handler to prevent unhandled 500 crashes
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error("[MOM Server Error Handler]:", err);
+  if (res.headersSent) {
+    return next(err);
+  }
+  return res.status(200).json({
+    type: "remark",
+    title: "Meeting Note",
+    expoundedText: req.body?.rawText || "Meeting note recorded.",
+    relatedToItemId: null,
+    relatedReason: null,
+    suggestedOwner: null,
+    suggestedDeadline: null,
+    priority: "Medium",
+    tags: ["Meeting Item"],
+    fallback: true,
+  });
+});
 
 export default app;

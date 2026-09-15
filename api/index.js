@@ -1,3 +1,4 @@
+import { createRequire } from 'module'; const require = createRequire(import.meta.url);
 var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -44839,10 +44840,10 @@ var modelCooldownMap = /* @__PURE__ */ new Map();
 function getHealthyCandidateModels() {
   const now = Date.now();
   const allModels = [
+    "gemini-3.8-flash",
     "gemini-3.1-flash-lite",
-    "gemini-3.6-flash",
     "gemini-flash-latest",
-    "gemini-3.8-flash"
+    "gemini-3.1-pro-preview"
   ];
   return allModels.sort((a, b) => {
     const aCooldown = modelCooldownMap.get(a) || 0;
@@ -45273,6 +45274,24 @@ Provide a concise 3 to 5 sentence summary and bulleted key agenda topics to serv
 });
 app.use("/api", router);
 app.use("/", router);
+app.use((err, req, res, next) => {
+  console.error("[MOM Server Error Handler]:", err);
+  if (res.headersSent) {
+    return next(err);
+  }
+  return res.status(200).json({
+    type: "remark",
+    title: "Meeting Note",
+    expoundedText: req.body?.rawText || "Meeting note recorded.",
+    relatedToItemId: null,
+    relatedReason: null,
+    suggestedOwner: null,
+    suggestedDeadline: null,
+    priority: "Medium",
+    tags: ["Meeting Item"],
+    fallback: true
+  });
+});
 var app_default = app;
 export {
   app,
